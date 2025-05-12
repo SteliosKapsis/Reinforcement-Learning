@@ -45,6 +45,7 @@ Inside `qlearning_experiments.py` you can modify the `experiment_configs` list t
 - `gamma` (discount factor)
 - `epsilon` (exploration rate)
 - `episodes` (training duration)
+- `N`, `K` (board size and win condition)
 
 ## 📊 Plotting & Evaluation
 Each experiment logs win, draw, and loss rates, and generates a plot for training performance. You can open the `.png` files to compare learning speed and stability.

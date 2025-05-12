@@ -1,20 +1,22 @@
 import random
 import numpy as np
+from shared_q import Q
 
 # ======================
 # 1) Hyperparameters
 # ======================
-N = 10           # Board size (e.g., 10 -> 10x10 board)
-K = 5            # Number of consecutive marks needed to win (e.g., 5 in a row)
-ALPHA = 0        # Learning rate
-GAMMA = 9        # Discount factor
-EPSILON = 2      # Epsilon for epsilon-greedy exploration
-EPISODES = 30000 # Number of training episodes
+N = 3            # Board size (e.g., 10 -> 10x10 board)
+K = 3            # Number of consecutive marks needed to win (e.g., 5 in a row)
+ALPHA = 0.1      # Learning rate
+GAMMA = 0.1        # Discount factor
+EPSILON = 0.1      # Epsilon for epsilon-greedy exploration
+#EPISODES = 30000 # Number of training episodes
 
 # Rewards
 REWARD_WIN = 1.0
-REWARD_DRAW = 0.0
-REWARD_STEP = 0.0
+REWARD_DRAW = -0.1
+REWARD_STEP = -0.01
+
 
 # ======================
 # 2) Game Logic
@@ -89,20 +91,30 @@ def make_move(state, action, n, k):
 
     # Otherwise, game continues; switch player
     next_player = 1 if current_player == 2 else 2
+
     return (next_board, next_player), False, REWARD_STEP
 
 # ======================
 # 3) Q-Learning Storage
 # ======================
-Q = {}
+
 
 def get_Q_value(state, action):
     """Return Q-value for (state, action) or 0.0 if not present."""
     return Q.get((state, action), 0.0)
 
+from copy import deepcopy
+
 def set_Q_value(state, action, value):
-    """Set Q-value for (state, action)."""
-    Q[(state, action)] = value
+    state_copy = deepcopy(state)
+    Q[(state_copy, action)] = value
+    print("✅ Stored Q:", (state_copy, action), "→", value)
+
+    if (state, action) not in Q:
+        print("🆕 New Q entry being added")
+    else:
+        print("♻️ Overwriting existing Q entry")
+
 
 def choose_action_epsilon_greedy(state, n):
     """
@@ -123,12 +135,8 @@ def choose_action_epsilon_greedy(state, n):
     return random.choice(best_actions)
 
 def update_Q(state, action, reward, next_state, done):
-    """
-    Q-learning update rule:
-        Q(s,a) = Q(s,a) + ALPHA * (reward + GAMMA * maxQ(s',.) - Q(s,a))
-    If 'done' is True, we consider maxQ(s',.) = 0.
-    """
-    global GAMMA, ALPHA
+    
+    global ALPHA, GAMMA, N
 
     old_value = get_Q_value(state, action)
     if done:
@@ -142,7 +150,14 @@ def update_Q(state, action, reward, next_state, done):
             td_target = reward + GAMMA * max(next_q_values)
 
     new_value = old_value + ALPHA * (td_target - old_value)
+
+    # 🔍 DEBUG: δείξε τι πρόκειται να αποθηκευτεί
+    print(f"Updating Q at state={state}, action={action}, value={new_value:.10f}")
+    print(f"old={old_value:.10f}, td_target={td_target:.10f}, new={new_value:.10f}")
+
+
     set_Q_value(state, action, new_value)
+
 
 # ======================
 # 4) Opponent Logic
@@ -274,16 +289,3 @@ def play_vs_opponent(opponent_move_func, n=N, k=K):
             else:
                 print("It's a draw!")
             break
-
-# ======================
-# 7) Main Execution
-# ======================
-if __name__ == "__main__":
-    # 1. Train Q-learning agent against random opponent.
-    print("Training the agent against a random opponent...")
-    train_q_learning_against_opponent(EPISODES, random_player_move)
-    print("Training complete.")
-
-    # 2. Play a few demo games against the random opponent strategy.
-    for _ in range(3):
-        play_vs_opponent(random_player_move, N, K)
