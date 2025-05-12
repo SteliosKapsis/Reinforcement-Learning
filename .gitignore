@@ -1,0 +1,13 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+venv/
+
+# Results / logs
+results/
+*.pkl
+
+# VSCode settings (προαιρετικά)
+.vscode/
