@@ -111,15 +111,18 @@ def run_experiments(configs, interval=1000):
         EPISODES = config.get('episodes', 30000)
         Q = {}  # reset Q-table
 
-        print(f"\nRunning config: α={ALPHA}, γ={GAMMA}, ε={EPSILON}, episodes={EPISODES}")
+        print(f"\nRunning Config: alpha={ALPHA}, gamma={GAMMA}, epsilon={EPSILON}, episodes={EPISODES}")
         win_rates, draw_rates, loss_rates = train_and_log(EPISODES, random_player_move, interval)
 
         filename = f"{results_dir}/curve_eps{EPSILON}_alpha{ALPHA}_gamma{GAMMA}_ep{EPISODES}.png"
         plot_learning_curve(win_rates, draw_rates, loss_rates, interval, filename)
 
         win, draw, loss = evaluate_agent(random_player_move, games=1000)
-        with open(f"{results_dir}/results_summary.txt", "a") as f:
-            f.write(f"Config α={ALPHA}, γ={GAMMA}, ε={EPSILON}, episodes={EPISODES} → Win: {win}, Draw: {draw}, Loss: {loss}\n")
+        with open(f"results/results_summary.txt", "a", encoding="utf-8") as f:
+            f.write(f"Board size:{N} (e.g., 10 -> 10x10 board),  # Number of consecutive marks needed to win:{K} (e.g., 5 in a row)\n")
+            f.write(f"\n")
+            f.write(f"Config: alpha={ALPHA}, gamma={GAMMA}, epsilon={EPSILON}, episodes={EPISODES} → Win: {win}, Draw: {draw}, Loss: {loss}\n")
+            f.write(f"\n")
 
 # =========================
 # 5) Κύρια Εκτέλεση
@@ -131,5 +134,3 @@ if __name__ == "__main__":
         {"alpha": 0.2, "gamma": 0.9, "epsilon": 0.1, "episodes": 50000},
     ]
     run_experiments(experiment_configs, interval=1000)
-
-

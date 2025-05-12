@@ -4,12 +4,12 @@ import numpy as np
 # ======================
 # 1) Hyperparameters
 # ======================
-N = 4            # Board size (e.g., 10 -> 10x10 board)
-K = 4            # Number of consecutive marks needed to win (e.g., 5 in a row)
-#ALPHA = 0.1      # Learning rate
-#GAMMA = 0.9      # Discount factor
-#EPSILON = 0.2    # Epsilon for epsilon-greedy exploration
-#EPISODES = 30000 # Number of training episodes
+N = 10           # Board size (e.g., 10 -> 10x10 board)
+K = 5            # Number of consecutive marks needed to win (e.g., 5 in a row)
+ALPHA = 0        # Learning rate
+GAMMA = 9        # Discount factor
+EPSILON = 2      # Epsilon for epsilon-greedy exploration
+EPISODES = 30000 # Number of training episodes
 
 # Rewards
 REWARD_WIN = 1.0
@@ -108,6 +108,8 @@ def choose_action_epsilon_greedy(state, n):
     """
     Choose an action using an epsilon-greedy policy based on Q-values.
     """
+    global EPSILON
+
     legal_actions = get_legal_actions(state, n)
 
     # With probability EPSILON, choose a random action
@@ -126,6 +128,8 @@ def update_Q(state, action, reward, next_state, done):
         Q(s,a) = Q(s,a) + ALPHA * (reward + GAMMA * maxQ(s',.) - Q(s,a))
     If 'done' is True, we consider maxQ(s',.) = 0.
     """
+    global GAMMA, ALPHA
+
     old_value = get_Q_value(state, action)
     if done:
         td_target = reward
