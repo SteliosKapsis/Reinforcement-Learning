@@ -94,6 +94,89 @@ def make_move(state, action, n, k):
 
     return (next_board, next_player), False, REWARD_STEP
 
+###############################################################
+########################## Minimax ############################
+###############################################################
+
+# Στρατηγική Minimax (αντίπαλος)
+def minimax(state, depth, is_maximizing, n, k):
+    """
+    Εφαρμόζει τον αλγόριθμο Minimax για να επιλέξει την καλύτερη κίνηση.
+    Χρησιμοποιείται για την επιλογή της καλύτερης στρατηγικής κίνησης για τον αντίπαλο.
+    """
+    board, current_player = state
+    if is_winner_k(board, 1, n, k):
+        return 1  # Παίκτης 1 κερδίζει
+    if is_winner_k(board, 2, n, k):
+        return -1  # Παίκτης 2 κερδίζει
+    if all(x != 0 for x in board):  # Εάν είναι ισοπαλία
+        return 0
+
+    # Αντιστρέφουμε τον παίκτη (αν είναι maximizing ή minimizing)
+    if is_maximizing:
+        max_eval = -float('inf')
+        for action in get_legal_actions(state, n):
+            next_state, done, reward = make_move(state, action, n, k)
+            eval = minimax(next_state, depth + 1, False, n, k)
+            max_eval = max(max_eval, eval)
+        return max_eval
+    else:
+        min_eval = float('inf')
+        for action in get_legal_actions(state, n):
+            next_state, done, reward = make_move(state, action, n, k)
+            eval = minimax(next_state, depth + 1, True, n, k)
+            min_eval = min(min_eval, eval)
+        return min_eval
+
+def minimax_move(state, n, k):
+    """
+    Επιστρέφει την καλύτερη κίνηση για τον αντίπαλο (με βάση Minimax).
+    """
+    best_value = -float('inf')
+    best_move = None
+    for action in get_legal_actions(state, n):
+        next_state, done, reward = make_move(state, action, n, k)
+        move_value = minimax(next_state, 0, False, n, k)  # Υπολογισμός της αξίας της κίνησης
+        if move_value > best_value:
+            best_value = move_value
+            best_move = action
+    return best_move
+
+###############################################################
+######################### self_play ###########################
+###############################################################
+
+# Self-play για εκπαίδευση
+def self_play(episodes, n, k):
+    """
+    Εκπαιδεύει τον πράκτορα μέσω self-play, όπου παίζει εναντίον του εαυτού του.
+    """
+    win_count = 0
+    loss_count = 0
+    draw_count = 0
+
+    for episode in range(episodes):
+        board = create_empty_board(n)
+        state = (board, 1)  # Ο πράκτορας πάντα ξεκινά ως παίκτης 1
+        done = False
+
+        while not done:
+            action = choose_action_epsilon_greedy(state, n)
+            next_state, done, reward = make_move(state, action, n, k)
+            update_Q(state, action, reward, next_state, done)
+            state = next_state
+
+        if reward == REWARD_WIN:
+            win_count += 1
+        elif reward == REWARD_DRAW:
+            draw_count += 1
+        else:
+            loss_count += 1
+
+    return win_count, draw_count, loss_count
+
+###############################################################
+
 # ======================
 # 3) Q-Learning Storage
 # ======================

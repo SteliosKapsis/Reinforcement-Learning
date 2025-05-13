@@ -29,7 +29,7 @@ def train_and_log(episodes, opponent_func, print_interval=1000):
                 update_Q(state, action, reward, next_state, done)
                 print(f"Agent played → reward: {reward}, done: {done}")
             else:
-                action = opponent_func(state, N)
+                action = opponent_func(state, N, K)
                 next_state, done, reward = make_move(state, action, N, K)
             state = next_state
 
@@ -138,7 +138,79 @@ def run_experiments(configs, interval=1000):
             f.write(f"Config alpha={ALPHA}, gamma={GAMMA}, epsilon={EPSILON}, N={N}, K={K}, episodes={EPISODES} -> Win: {win}, Draw: {draw}, Loss: {loss}\n")
 
 # =========================
-# 5) Κύρια Εκτέλεση
+# 5) Πειράματα με Minimax
+# =========================
+# Run experiments with Minimax as the opponent
+def run_experiments_Minimax(configs, interval=1000):
+    global ALPHA, GAMMA, EPSILON, N, K
+    results_dir = "results"
+    os.makedirs(results_dir, exist_ok=True)
+
+    for config in configs:
+        ALPHA = config['alpha']
+        GAMMA = config['gamma']
+        EPSILON = config['epsilon']
+        N = config.get('N', 3)
+        K = config.get('K', 3)
+        EPISODES = config.get('episodes', 30000)
+        Q.clear()  # ✅ properly clear shared Q-table
+
+        print(f"\nRunning config: α={ALPHA}, γ={GAMMA}, ε={EPSILON}, N={N}, K={K}, episodes={EPISODES}")
+        win_rates, draw_rates, loss_rates = train_and_log(EPISODES, minimax_move, interval)  # Use Minimax as opponent
+
+        filename_base = f"N{N}_K{K}_eps{EPSILON}_alpha{ALPHA}_gamma{GAMMA}_ep{EPISODES}"
+        plot_learning_curve(win_rates, draw_rates, loss_rates, interval, f"{results_dir}/curve_{filename_base}.png")
+
+        print("📦 Q-table size before saving:", len(Q))
+        print("📦 Sample Q entries:", list(Q.items())[:3])
+        print("🧩 Q-table keys:", list(Q.keys())[:5])
+
+        with open(f"{results_dir}/qtable_{filename_base}.pkl", "wb") as f:
+            pickle.dump(Q, f)
+
+        print(f"Q-table size for config {filename_base}: {len(Q)} entries")
+
+        win, draw, loss = evaluate_agent(minimax_move, games=1000)  # Evaluate against Minimax
+        with open(f"{results_dir}/results_summary.txt", "a", encoding="utf-8") as f:
+            f.write(f"Config alpha={ALPHA}, gamma={GAMMA}, epsilon={EPSILON}, N={N}, K={K}, episodes={EPISODES} -> Win: {win}, Draw: {draw}, Loss: {loss}\n")
+
+# =========================
+# 6) Πειράματα με self_play
+# =========================
+# Run experiments with Self-play
+def run_experiments_self_play(configs, interval=1000):
+    global ALPHA, GAMMA, EPSILON, N, K
+    results_dir = "results"
+    os.makedirs(results_dir, exist_ok=True)
+
+    for config in configs:
+        ALPHA = config['alpha']
+        GAMMA = config['gamma']
+        EPSILON = config['epsilon']
+        N = config.get('N', 3)
+        K = config.get('K', 3)
+        EPISODES = config.get('episodes', 30000)
+        Q.clear()  # ✅ properly clear shared Q-table
+
+        print(f"\nRunning config: α={ALPHA}, γ={GAMMA}, ε={EPSILON}, N={N}, K={K}, episodes={EPISODES}")
+        win_count, draw_count, loss_count = self_play(EPISODES, N, K)  # Train via self-play
+
+        filename_base = f"N{N}_K{K}_eps{EPSILON}_alpha{ALPHA}_gamma{GAMMA}_ep{EPISODES}"
+        print(f"Win count: {win_count}, Draw count: {draw_count}, Loss count: {loss_count}")
+
+        with open(f"{results_dir}/qtable_{filename_base}.pkl", "wb") as f:
+            pickle.dump(Q, f)
+
+        print(f"Q-table size for config {filename_base}: {len(Q)} entries")
+
+        # Optionally, you can evaluate after self-play training
+        win, draw, loss = evaluate_agent(random_player_move, games=1000)  # Evaluate against random opponent
+        with open(f"{results_dir}/results_summary.txt", "a", encoding="utf-8") as f:
+            f.write(f"Config alpha={ALPHA}, gamma={GAMMA}, epsilon={EPSILON}, N={N}, K={K}, episodes={EPISODES} -> Win: {win}, Draw: {draw}, Loss: {loss}\n")
+
+
+# =========================
+# 7) Κύρια Εκτέλεση
 # =========================
 if __name__ == "__main__":
     experiment_configs = [
@@ -146,4 +218,6 @@ if __name__ == "__main__":
         {"alpha": 0.9, "gamma": 0.9, "epsilon": 0.2, "episodes": 1000, "N": 3, "K": 3},
         {"alpha": 0.9, "gamma": 0.9, "epsilon": 0.2, "episodes": 1000, "N": 3, "K": 3},
     ]
-    run_experiments(experiment_configs, interval=1000)
+    #run_experiments(experiment_configs, interval=1000)
+    #run_experiments_Minimax(experiment_configs, interval=1000)
+    run_experiments_self_play(experiment_configs, interval=1000)
