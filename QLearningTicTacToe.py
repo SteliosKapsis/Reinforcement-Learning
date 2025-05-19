@@ -245,7 +245,7 @@ def update_Q(state, action, reward, next_state, done):
 # ======================
 # 4) Opponent Logic
 # ======================
-def random_player_move(state, n):
+def random_player_move(state, n, k):
     """
     Given the current state and board size n, returns a random legal move.
     This function encapsulates the random opponent's strategy.
