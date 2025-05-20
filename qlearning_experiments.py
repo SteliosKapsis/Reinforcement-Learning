@@ -382,7 +382,7 @@ def analyze_experiment_results(results_dir="results", save_plot=True):
     logs = []
 
     for filename in os.listdir(results_dir):
-        if filename.startswith("log_Self_Play") and filename.endswith(".json"):
+        if filename.startswith("log_") and filename.endswith(".json"):
             path = os.path.join(results_dir, filename)
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -423,7 +423,7 @@ def analyze_experiment_results(results_dir="results", save_plot=True):
 
     # Εκτύπωση κορυφαίων configs
     print("\n🏆 Καλύτερα Configs με βάση το Win Rate:")
-    print(df_sorted[["label", "win_rate", "draw_rate", "loss_rate", "qtable_size", "duration_seconds"]].head(20))
+    print(df_sorted[["label", "win_rate", "draw_rate", "loss_rate", "qtable_size", "duration_seconds"]].head(10))
 ################################
 
 # =========================
@@ -459,8 +459,8 @@ if __name__ == "__main__":
         {"alpha": 0.9, "gamma": 0.9, "epsilon": 0.2, "episodes": 5000, "N": 3, "K": 3},
     ]
 
-    run_experiments(experiment_configs, interval=500)
-    run_experiments_Minimax(experiment_configs, interval=500)
-    run_experiments_self_play(experiment_configs, interval=500)
+    #run_experiments(experiment_configs, interval=500)
+    #run_experiments_Minimax(experiment_configs, interval=500) #(If you try to train Minimax In this: # === Even Larger: 5x5 === , you will have to be very patient)
+    #run_experiments_self_play(experiment_configs, interval=500)
 
     analyze_experiment_results()
