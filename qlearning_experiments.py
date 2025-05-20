@@ -1,6 +1,7 @@
 # qlearning_experiments.py
 import random
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import pickle
@@ -369,6 +370,62 @@ def run_experiments_self_play(configs, interval=1000):
             results_dir="results"
         )
 
+################################
+def analyze_experiment_results(results_dir="results", save_plot=True):
+    """
+    Φορτώνει όλα τα .json logs από τον φάκελο και εμφανίζει/αποθηκεύει γράφημα με τα win rates.
+    
+    Args:
+        results_dir (str): Ο φάκελος όπου βρίσκονται τα log_*.json.
+        save_plot (bool): Αν True, αποθηκεύει το γράφημα σε PNG.
+    """
+    logs = []
+
+    for filename in os.listdir(results_dir):
+        if filename.startswith("log_Self_Play") and filename.endswith(".json"):
+            path = os.path.join(results_dir, filename)
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                logs.append(data)
+
+    if not logs:
+        print("❌ Δεν βρέθηκαν αρχεία log_*.json στον φάκελο:", results_dir)
+        return
+
+    # Δημιουργία DataFrame
+    df = pd.DataFrame(logs)
+    df["total_games"] = df["evaluation_win"] + df["evaluation_draw"] + df["evaluation_loss"]
+    df["win_rate"] = df["evaluation_win"] / df["total_games"]
+    df["draw_rate"] = df["evaluation_draw"] / df["total_games"]
+    df["loss_rate"] = df["evaluation_loss"] / df["total_games"]
+    df["label"] = df.apply(lambda row: f"N{row['N']}_K{row['K']}_α{row['alpha']}_γ{row['gamma']}_ε{row['epsilon']}", axis=1)
+
+    # Ταξινόμηση κατά win rate
+    df_sorted = df.sort_values(by="win_rate", ascending=False)
+
+    # Οπτικοποίηση
+    plt.figure(figsize=(12, 6))
+    plt.bar(df_sorted["label"], df_sorted["win_rate"], color='green')
+    plt.xticks(rotation=45, ha='right')
+    plt.ylabel("Win Rate")
+    plt.title("🔎 Σύγκριση Configurations με βάση το Win Rate")
+    plt.grid(axis='y')
+    plt.tight_layout()
+
+    # ✅ Αποθήκευση PNG
+    if save_plot:
+        plot_path = os.path.join(results_dir, "summary_win_rate_plot.png")
+        plt.savefig(plot_path)
+        print(f"📊 Το γράφημα αποθηκεύτηκε στο: {plot_path}")
+
+    # Εμφάνιση
+    plt.show()
+
+    # Εκτύπωση κορυφαίων configs
+    print("\n🏆 Καλύτερα Configs με βάση το Win Rate:")
+    print(df_sorted[["label", "win_rate", "draw_rate", "loss_rate", "qtable_size", "duration_seconds"]].head(20))
+################################
+
 # =========================
 # 7) Κύρια Εκτέλεση
 # =========================
@@ -402,6 +459,8 @@ if __name__ == "__main__":
         {"alpha": 0.9, "gamma": 0.9, "epsilon": 0.2, "episodes": 5000, "N": 3, "K": 3},
     ]
 
-    #run_experiments(experiment_configs_test, interval=500)
-    #run_experiments_Minimax(experiment_configs_test, interval=500)
-    run_experiments_self_play(experiment_configs_test, interval=500)
+    run_experiments(experiment_configs, interval=500)
+    run_experiments_Minimax(experiment_configs, interval=500)
+    run_experiments_self_play(experiment_configs, interval=500)
+
+    analyze_experiment_results()
