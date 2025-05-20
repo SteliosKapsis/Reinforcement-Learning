@@ -99,44 +99,54 @@ def make_move(state, action, n, k):
 ###############################################################
 
 # Στρατηγική Minimax (αντίπαλος)
-def minimax(state, depth, is_maximizing, n, k):
+def minimax(state, depth, is_maximizing, n, k, alpha, beta, max_depth):
     """
-    Εφαρμόζει τον αλγόριθμο Minimax για να επιλέξει την καλύτερη κίνηση.
-    Χρησιμοποιείται για την επιλογή της καλύτερης στρατηγικής κίνησης για τον αντίπαλο.
+    Minimax με Alpha-Beta Pruning και περιορισμό βάθους.
     """
     board, current_player = state
+
+    # Check for terminal state
     if is_winner_k(board, 1, n, k):
-        return 1  # Παίκτης 1 κερδίζει
+        return 1
     if is_winner_k(board, 2, n, k):
-        return -1  # Παίκτης 2 κερδίζει
-    if all(x != 0 for x in board):  # Εάν είναι ισοπαλία
+        return -1
+    if all(x != 0 for x in board):
         return 0
 
-    # Αντιστρέφουμε τον παίκτη (αν είναι maximizing ή minimizing)
+    # Depth limit reached — return neutral heuristic
+    if depth >= max_depth:
+        return 0
+
     if is_maximizing:
         max_eval = -float('inf')
         for action in get_legal_actions(state, n):
-            next_state, done, reward = make_move(state, action, n, k)
-            eval = minimax(next_state, depth + 1, False, n, k)
+            next_state, _, _ = make_move(state, action, n, k)
+            eval = minimax(next_state, depth + 1, False, n, k, alpha, beta, max_depth)
             max_eval = max(max_eval, eval)
+            alpha = max(alpha, eval)
+            if beta <= alpha:
+                break  # ✅ Prune
         return max_eval
     else:
         min_eval = float('inf')
         for action in get_legal_actions(state, n):
-            next_state, done, reward = make_move(state, action, n, k)
-            eval = minimax(next_state, depth + 1, True, n, k)
+            next_state, _, _ = make_move(state, action, n, k)
+            eval = minimax(next_state, depth + 1, True, n, k, alpha, beta, max_depth)
             min_eval = min(min_eval, eval)
+            beta = min(beta, eval)
+            if beta <= alpha:
+                break  # ✅ Prune
         return min_eval
 
-def minimax_move(state, n, k):
+def minimax_move(state, n, k, max_depth=4):
     """
-    Επιστρέφει την καλύτερη κίνηση για τον αντίπαλο (με βάση Minimax).
+    Επιλέγει την καλύτερη κίνηση με Minimax (με pruning + depth limit).
     """
     best_value = -float('inf')
     best_move = None
     for action in get_legal_actions(state, n):
-        next_state, done, reward = make_move(state, action, n, k)
-        move_value = minimax(next_state, 0, False, n, k)  # Υπολογισμός της αξίας της κίνησης
+        next_state, _, _ = make_move(state, action, n, k)
+        move_value = minimax(next_state, 1, False, n, k, -float('inf'), float('inf'), max_depth)
         if move_value > best_value:
             best_value = move_value
             best_move = action

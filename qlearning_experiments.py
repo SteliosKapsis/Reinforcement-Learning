@@ -6,6 +6,39 @@ import os
 import pickle
 from QLearningTicTacToe import *
 from shared_q import Q  # ✅ shared Q-table
+import json
+import time
+
+# =======================================
+def log_experiment_to_json(filename_base, config, win, draw, loss, qtable_size, elapsed_seconds, results_dir="results"):
+    """
+    Αποθηκεύει τα αποτελέσματα ενός πειράματος σε JSON αρχείο με βάση το filename_base.
+    """
+    os.makedirs(results_dir, exist_ok=True)
+
+    log_data = {
+        "alpha": config["alpha"],
+        "gamma": config["gamma"],
+        "epsilon": config["epsilon"],
+        "N": config.get("N", 3),
+        "K": config.get("K", 3),
+        "episodes": config.get("episodes", 30000),
+        "evaluation_win": win,
+        "evaluation_draw": draw,
+        "evaluation_loss": loss,
+        "qtable_size": qtable_size,
+        "duration_seconds": round(elapsed_seconds, 2)
+    }
+
+    json_path = os.path.join(results_dir, f"log_{filename_base}.json")
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(log_data, f, indent=4)
+
+    print(f"📄 JSON log saved to: {json_path}")
+
+
+# =======================================
+
 
 # =========================
 # 1) Εκπαίδευση με καταγραφή στατιστικών
@@ -76,6 +109,10 @@ def plot_learning_curve(win_rates, draw_rates, loss_rates, interval, filename):
     filename: The filename to save the plot image.
     """
     x = [i * interval for i in range(len(win_rates))]  # x-axis: Episode intervals
+
+    print("Plot x:", x)
+    print("Plot win:", win_rates)
+
     plt.plot(x, win_rates, label='Win Rate')
     plt.plot(x, draw_rates, label='Draw Rate')
     plt.plot(x, loss_rates, label='Loss Rate')
@@ -135,7 +172,7 @@ def run_experiments(configs, interval=1000):
     results_dir = "results"
     os.makedirs(results_dir, exist_ok=True)
 
-    for config in configs:
+    for i,config in enumerate(configs):
         ALPHA = config['alpha']
         GAMMA = config['gamma']
         EPSILON = config['epsilon']
@@ -149,7 +186,8 @@ def run_experiments(configs, interval=1000):
         # Open the file to log training rates
         with open(f"{results_dir}/training_rates.txt", "a", encoding="utf-8") as f:
             f.write(f"\nRunning config: α={ALPHA}, γ={GAMMA}, ε={EPSILON}, N={N}, K={K}, episodes={EPISODES}\n")
-
+        
+        start_time = time.time()
         # Train the agent and get win, draw, and loss rates
         win_rates, draw_rates, loss_rates = train_and_log(EPISODES, random_player_move, interval)
 
@@ -160,7 +198,7 @@ def run_experiments(configs, interval=1000):
             f.write(f"Final loss_rates: {loss_rates}\n")
 
         # Plot the learning curve and save it as a PNG file
-        filename_base = f"N{N}_K{K}_eps{EPSILON}_alpha{ALPHA}_gamma{GAMMA}_ep{EPISODES}"
+        filename_base = f"N{N}_K{K}_eps{EPSILON}_alpha{ALPHA}_gamma{GAMMA}_ep{EPISODES}".replace(".", "_")
         plot_learning_curve(win_rates, draw_rates, loss_rates, interval, f"{results_dir}/curve_{filename_base}.png")
 
         print("📦 Q-table size before saving:", len(Q))
@@ -180,17 +218,29 @@ def run_experiments(configs, interval=1000):
         with open(f"{results_dir}/evaluation_results_summary.txt", "a", encoding="utf-8") as f:
             f.write(f"Config alpha={ALPHA}, gamma={GAMMA}, epsilon={EPSILON}, N={N}, K={K}, episodes={EPISODES} -> Win: {win}, Draw: {draw}, Loss: {loss}\n")
 
+        elapsed = time.time() - start_time
+
+        log_experiment_to_json(
+            filename_base=filename_base,
+            config=config,
+            win=win,
+            draw=draw,
+            loss=loss,
+            qtable_size=len(Q),
+            elapsed_seconds=elapsed,
+            results_dir="results"
+        )
+
 # =========================
 # 5) Πειράματα με Minimax
 # =========================
-# Run experiments with Minimax as the opponent
 # Run experiments with Minimax as the opponent
 def run_experiments_Minimax(configs, interval=1000):
     global ALPHA, GAMMA, EPSILON, N, K
     results_dir = "results"
     os.makedirs(results_dir, exist_ok=True)
 
-    for config in configs:
+    for i,config in enumerate(configs):
         ALPHA = config['alpha']
         GAMMA = config['gamma']
         EPSILON = config['epsilon']
@@ -199,14 +249,16 @@ def run_experiments_Minimax(configs, interval=1000):
         EPISODES = config.get('episodes', 30000)
         Q.clear()  # ✅ properly clear shared Q-table
 
-        print(f"\nRunning config: α={ALPHA}, γ={GAMMA}, ε={EPSILON}, N={N}, K={K}, episodes={EPISODES}")
+        print(f"\nMini_max_Running config: α={ALPHA}, γ={GAMMA}, ε={EPSILON}, N={N}, K={K}, episodes={EPISODES}")
         
         # Open the file to log training rates for Minimax experiments
         with open(f"{results_dir}/training_rates_minimax.txt", "a", encoding="utf-8") as f:
             f.write(f"\nRunning config: α={ALPHA}, γ={GAMMA}, ε={EPSILON}, N={N}, K={K}, episodes={EPISODES}\n")
 
+        start_time = time.time()
         # Train the agent with Minimax as the opponent
-        win_rates, draw_rates, loss_rates = train_and_log(EPISODES, minimax_move, interval)  # Use Minimax as opponent
+        #win_rates, draw_rates, loss_rates = train_and_log(EPISODES, minimax_move, interval)  # Use Minimax as opponent
+        win_rates, draw_rates, loss_rates = train_and_log(EPISODES, lambda s, n, k: minimax_move(s, n, k, max_depth=4), interval)
 
         # Log the win, draw, and loss rates into the new training_rates_minimax.txt file
         with open(f"{results_dir}/training_rates_minimax.txt", "a", encoding="utf-8") as f:
@@ -215,10 +267,14 @@ def run_experiments_Minimax(configs, interval=1000):
             f.write(f"Final loss_rates: {loss_rates}\n")
 
         # Plot the learning curve and save it as a PNG file
-        filename_base = f"Minimax: N{N}_K{K}_eps{EPSILON}_alpha{ALPHA}_gamma{GAMMA}_ep{EPISODES}"
+        filename_base = f"Minimax_N{N}_K{K}_eps{EPSILON}_alpha{ALPHA}_gamma{GAMMA}_ep{EPISODES}".replace(".", "_")
         plot_learning_curve(win_rates, draw_rates, loss_rates, interval, f"{results_dir}/curve_{filename_base}.png")
 
-        # Saving the Q-table after the Minimax training
+        print("📦 Q-table size before saving:", len(Q))
+        print("📦 Sample Q entries:", list(Q.items())[:3])
+        print("🧩 Q-table keys:", list(Q.keys())[:5])
+
+        # Save the Q-table to a pickle file
         with open(f"{results_dir}/qtable_{filename_base}.pkl", "wb") as f:
             pickle.dump(Q, f)
 
@@ -231,19 +287,30 @@ def run_experiments_Minimax(configs, interval=1000):
         with open(f"{results_dir}/evaluation_results_summary_minimax.txt", "a", encoding="utf-8") as f:
             f.write(f"Config alpha={ALPHA}, gamma={GAMMA}, epsilon={EPSILON}, N={N}, K={K}, episodes={EPISODES} -> Win: {win}, Draw: {draw}, Loss: {loss}\n")
 
+        elapsed = time.time() - start_time
+
+        log_experiment_to_json(
+            filename_base=filename_base,
+            config=config,
+            win=win,
+            draw=draw,
+            loss=loss,
+            qtable_size=len(Q),
+            elapsed_seconds=elapsed,
+            results_dir="results"
+        )
 
 
 # =========================
 # 6) Πειράματα με self_play
 # =========================
 # Run experiments with Self-play
-# Run experiments with Self-play
 def run_experiments_self_play(configs, interval=1000):
     global ALPHA, GAMMA, EPSILON, N, K
     results_dir = "results"
     os.makedirs(results_dir, exist_ok=True)
 
-    for config in configs:
+    for i,config in enumerate(configs):
         ALPHA = config['alpha']
         GAMMA = config['gamma']
         EPSILON = config['epsilon']
@@ -252,12 +319,13 @@ def run_experiments_self_play(configs, interval=1000):
         EPISODES = config.get('episodes', 30000)
         Q.clear()  # ✅ properly clear shared Q-table
 
-        print(f"\nRunning config: α={ALPHA}, γ={GAMMA}, ε={EPSILON}, N={N}, K={K}, episodes={EPISODES}")
+        print(f"\nSelf_play_Running config: α={ALPHA}, γ={GAMMA}, ε={EPSILON}, N={N}, K={K}, episodes={EPISODES}")
         
         # Open the file to log self-play training rates
         with open(f"{results_dir}/training_rates_self_play.txt", "a", encoding="utf-8") as f:
             f.write(f"\nRunning config: α={ALPHA}, γ={GAMMA}, ε={EPSILON}, N={N}, K={K}, episodes={EPISODES}\n")
 
+        start_time = time.time()
         # Train via self-play and get win, draw, loss rates
         win_rates, draw_rates, loss_rates = train_and_log(EPISODES, random_player_move, interval)
 
@@ -266,35 +334,74 @@ def run_experiments_self_play(configs, interval=1000):
             f.write(f"Final win_rates: {win_rates}\n")
             f.write(f"Final draw_rates: {draw_rates}\n")
             f.write(f"Final loss_rates: {loss_rates}\n")
-
-        filename_base = f"self_play: N{N}_K{K}_eps{EPSILON}_alpha{ALPHA}_gamma{GAMMA}_ep{EPISODES}"
         
-        # Save the Q-table after self-play training
-        with open(f"{results_dir}/selfplay_qtable_{filename_base}.pkl", "wb") as f:
+        # Plot the learning curve and save it as a PNG file
+        filename_base = f"Self_Play_N{N}_K{K}_eps{EPSILON}_alpha{ALPHA}_gamma{GAMMA}_ep{EPISODES}".replace(".", "_")
+        plot_learning_curve(win_rates, draw_rates, loss_rates, interval, f"{results_dir}/curve_{filename_base}.png")
+
+        print("📦 Q-table size before saving:", len(Q))
+        print("📦 Sample Q entries:", list(Q.items())[:3])
+        print("🧩 Q-table keys:", list(Q.keys())[:5])
+
+        # Save the Q-table to a pickle file
+        with open(f"{results_dir}/qtable_{filename_base}.pkl", "wb") as f:
             pickle.dump(Q, f)
 
         print(f"Q-table size for config {filename_base}: {len(Q)} entries")
 
-        # Optionally, you can evaluate after self-play training
-        win, draw, loss = evaluate_agent(random_player_move, games=1000)  # Evaluate against random opponent
-        with open(f"{results_dir}/evaluation_results_summary_selfplay.txt", "a", encoding="utf-8") as f:
+        # Evaluate the agent against random player after training
+        win, draw, loss = evaluate_agent(random_player_move, games=1000)
+
+        # Log evaluation results
+        with open(f"{results_dir}/evaluation_results_summary_self_play.txt", "a", encoding="utf-8") as f:
             f.write(f"Config alpha={ALPHA}, gamma={GAMMA}, epsilon={EPSILON}, N={N}, K={K}, episodes={EPISODES} -> Win: {win}, Draw: {draw}, Loss: {loss}\n")
 
+        elapsed = time.time() - start_time
+
+        log_experiment_to_json(
+            filename_base=filename_base,
+            config=config,
+            win=win,
+            draw=draw,
+            loss=loss,
+            qtable_size=len(Q),
+            elapsed_seconds=elapsed,
+            results_dir="results"
+        )
 
 # =========================
 # 7) Κύρια Εκτέλεση
 # =========================
 if __name__ == "__main__":
+
     experiment_configs = [
-        {"alpha": 0.9, "gamma": 0.9, "epsilon": 0.2, "episodes": 1000, "N": 3, "K": 3},
-        {"alpha": 0.9, "gamma": 0.9, "epsilon": 0.2, "episodes": 1000, "N": 3, "K": 3},
-        {"alpha": 0.9, "gamma": 0.9, "epsilon": 0.2, "episodes": 1000, "N": 3, "K": 3},
+    # === Base Case: 3x3, K=3 ===
+    {"alpha": 0.9, "gamma": 0.9, "epsilon": 0.1, "episodes": 5000, "N": 3, "K": 3},  # Low epsilon, fast convergence
+    {"alpha": 0.7, "gamma": 0.9, "epsilon": 0.3, "episodes": 5000, "N": 3, "K": 3},  # More exploration
+    {"alpha": 0.5, "gamma": 0.6, "epsilon": 0.2, "episodes": 5000, "N": 3, "K": 3},  # Slower learning
+
+    # === Increased challenge: K=4 (harder to win) ===
+    {"alpha": 0.8, "gamma": 0.8, "epsilon": 0.2, "episodes": 7000, "N": 3, "K": 4},  # Technically impossible, test draw handling
+
+    # === Larger board: 4x4 ===
+    {"alpha": 0.9, "gamma": 0.95, "epsilon": 0.2, "episodes": 8000, "N": 4, "K": 3},  # More space, more Q-values
+    {"alpha": 0.7, "gamma": 0.85, "epsilon": 0.3, "episodes": 8000, "N": 4, "K": 4},  # Diagonal strategies
+
+    # === Even Larger: 5x5 ===
+    {"alpha": 0.9, "gamma": 0.9, "epsilon": 0.15, "episodes": 10000, "N": 5, "K": 4},  # Harder planning
+    {"alpha": 0.6, "gamma": 0.95, "epsilon": 0.25, "episodes": 10000, "N": 5, "K": 5},  # Full board win
+
+    # === Fast-learning but short memory ===
+    {"alpha": 1.0, "gamma": 0.5, "epsilon": 0.2, "episodes": 6000, "N": 3, "K": 3},
+
+    # === Long-term thinker but slow learner ===
+    {"alpha": 0.4, "gamma": 0.99, "epsilon": 0.1, "episodes": 6000, "N": 3, "K": 3},
     ]
 
     experiment_configs_test = [
-        {"alpha": 0.9, "gamma": 0.9, "epsilon": 0.2, "episodes": 1000, "N": 3, "K": 3},
+        {"alpha": 0.9, "gamma": 0.9, "epsilon": 0.2, "episodes": 5000, "N": 3, "K": 3},
     ]
 
-    run_experiments(experiment_configs, interval=1000)
-    #run_experiments_Minimax(experiment_configs_test, interval=1000)
-    #run_experiments_self_play(experiment_configs, interval=1000)
+    #run_experiments(experiment_configs_test, interval=500)
+    #run_experiments_Minimax(experiment_configs_test, interval=500)
+    run_experiments_self_play(experiment_configs_test, interval=500)
